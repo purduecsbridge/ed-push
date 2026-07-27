@@ -1,0 +1,31 @@
+# The manifest: everything Ed needs to know that isn't a file.
+# See README.md for the full schema reference.
+
+title: "Lab: Greeter"               # slide title shown in the lesson
+lesson: 123456                      # target lesson id (from the lesson URL)
+# slide: 234567                     # OPTIONAL: reuse an existing code slide;
+                                    # omit to clone the configured template.
+                                    # Record the id here after the first push.
+points: 3                           # total automatic points — must equal the
+                                    # sum of the @Tag("score:N") tags in the tests
+build_command: "javac Greeter.java"
+run_command: "java Greeter"
+testcase_file: "GreeterTest.java"   # the JUnit 5 class Ed should run
+time_limit_seconds: 60
+per_testcase_scores: true
+git_submission: false               # true if students may submit via git
+workspace: true                     # the "Workspace" box: full IDE + debugger
+                                    # for students; omit to leave whatever the
+                                    # slide already has
+feedback: true                      # students see test output (default true)
+# attempts: 10                      # OPTIONAL: attempts allowed per interval
+# template_slide: 345678            # OPTIONAL: per-challenge template override
+                                    # (else config.yaml's template_slide)
+# marking: none                     # OPTIONAL: no autograding (dropbox-style
+                                    # challenge, e.g. GUI labs) — points/
+                                    # testcase_file not required then
+# check_command: "java -jar checkstyle.jar -c cs-style.xml Greeter.java"
+                                    # OPTIONAL: enables Ed's "Check" button;
+                                    # runs with the files from check/ present
+# hidden: true                      # OPTIONAL: create the slide hidden
+                                    # (exam workflows); default is visible

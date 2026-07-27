@@ -1,0 +1,29 @@
+# Copy to config.yaml and fill in for your course.
+# config.yaml is gitignored — it holds YOUR course's ids.
+
+# The Ed course id (from the course URL: edstem.org/us/courses/<id>/...).
+# Only used by `doctor` for a reachability check — pushes address
+# lessons/slides directly (their ids are globally unique).
+course: 123456
+
+# A blank CODE slide to clone when a challenge.yaml has no slide id.
+# Create one in a scratch lesson via the Ed UI (Add slide -> Code),
+# note its id from the editor URL, and never touch it again.
+template_slide: 234567
+
+# A blank DOCUMENT slide to clone for push-doc (handouts). Same idea
+# as template_slide but must be a document slide, not a code slide.
+doc_template_slide: 345678
+
+# Guardrails: a target lesson's title must match an allowed pattern and
+# must not match a blocked one (case-insensitive regex). This tool is for
+# labs/homework; exams stay off-limits without --force.
+allowed_lesson_patterns:
+  - "Lab"
+  - "Homework"
+  - "HW"
+blocked_lesson_patterns:
+  - "Midterm"
+  - "Exam"
+  - "Final"
+  - "Quiz"
