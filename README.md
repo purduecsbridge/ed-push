@@ -79,6 +79,65 @@ instead of cloning a new one.
 Dry-run is the default everywhere; `--no-dry-run` is always the flag
 that makes it real.
 
+## Lab handouts (document slides)
+
+A lab on Ed is typically **two slides in one lesson**: the handout as
+a document slide on top, the challenge below it. `push-challenge`
+handles the challenge; `push-doc` handles the handout — so if your
+handouts live as Markdown (or return to Markdown from Docs/Word
+exports), the whole lab is re-publishable from the repo.
+
+Keep the handout next to the challenge directory, with any
+screenshots in a sibling folder the Markdown references by relative
+path:
+
+```
+my-lab/
+  handout.md           the lab handout
+  img/
+    01.png             referenced as ![New project](img/01.png)
+  challenge.yaml, writeup.md, scaffold/ ...
+```
+
+**First push** — clones the blank document template from config.yaml
+into the lesson and prints the new slide id:
+
+```bash
+$ python3 ed_push.py push-doc my-lab/handout.md --lesson 123456 --no-dry-run
+lesson 123456: "Lab 05" — ok
+  image: uploaded img/01.png -> https://static.us.edusercontent.com/files/...
+cloned template 345678 -> slide 456789 (visible) in lesson 123456
+  slide 456789: pushed, round-trip ✓
+  (record it: re-push later with --slide 456789)
+```
+
+Record that slide id (a comment in challenge.yaml is a good home).
+**Every later re-push** targets the same slide, so handout edits are
+one command and never touch the challenge or its grading config:
+
+```bash
+python3 ed_push.py push-doc my-lab/handout.md --slide 456789 --no-dry-run
+```
+
+Details worth knowing:
+
+- The slide title comes from the handout's first `# heading`
+  (override with `--title`). Local images are uploaded automatically
+  on every push; http(s) image URLs pass through untouched.
+- Drop `--no-dry-run` to preview: the dry run converts the Markdown
+  (reporting its size) without uploading anything. `convert
+  my-lab/handout.md` shows the raw Ed XML if a rendering looks off.
+- The same lesson-title guardrails apply as for challenges.
+- Push the handout **before** the challenge on a fresh lesson so the
+  slides land in reading order (slide order can also be rearranged
+  by dragging in the Ed lesson editor).
+- Coming from Google Docs/Word? Export to Markdown (Docs has
+  File → Download → Markdown; `pandoc -t gfm` works for .docx),
+  put the images beside the file, fix up anything exotic — the
+  supported subset is listed under *Markdown conversion notes*
+  below — and push. From then on the Markdown file is the source
+  of truth.
+
 ## challenge.yaml schema
 
 | Key | Required | Ed knob it drives |
