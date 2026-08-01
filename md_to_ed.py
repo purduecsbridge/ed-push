@@ -36,6 +36,13 @@ def _escape(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
+def _escape_attr(text: str) -> str:
+    """Like _escape, but also quotes — for use inside a "..." attribute
+    value (src=, alt=, href=), where a literal " would truncate the
+    attribute and break the XML."""
+    return _escape(text).replace('"', "&quot;")
+
+
 def _inline(text: str) -> str:
     """Escape, wrap `code`, then apply [links](url), **bold**, and
     *italic*/_italic_ with the code spans hidden behind placeholders —
@@ -52,7 +59,10 @@ def _inline(text: str) -> str:
         else:
             buf.append(_escape(part))
     s = "".join(buf)
-    s = LINK_RE.sub(r'<link href="\2">\1</link>', s)
+    # s is already & / < / > escaped by the loop above; only quotes are left
+    # to guard here, since re-running _escape_attr would double-escape &.
+    s = LINK_RE.sub(lambda m: f'<link href="{m.group(2).replace(chr(34), "&quot;")}">'
+                              f'{m.group(1)}</link>', s)
     s = re.sub(r"\*\*(.+?)\*\*", r"<bold>\1</bold>", s)
     s = re.sub(r"(?<!\*)\*([^*\n]+)\*(?!\*)", r"<italic>\1</italic>", s)
     s = re.sub(r"(?<![\w_])_([^_\n]+)_(?![\w_])", r"<italic>\1</italic>", s)
@@ -143,7 +153,7 @@ def markdown_to_ed_xml(md: str, image_uploader=None) -> str:
             else:
                 raise ValueError(f"local image {src!r} needs an image_uploader")
             dims = (f' width="{w}" height="{h}"' if w and h else "")
-            xml.append(f'<figure><image src="{_escape(url)}" alt="{_escape(alt)}"'
+            xml.append(f'<figure><image src="{_escape_attr(url)}" alt="{_escape_attr(alt)}"'
                        f'{dims}></image></figure>')
             i += 1
             continue
