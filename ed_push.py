@@ -336,10 +336,14 @@ def cmd_push_doc(args):
     cfg = load_config()
     src = Path(args.file)
     md = src.read_text()
-    content = markdown_to_ed_xml(md, make_image_uploader(src.parent, token,
-                                                         args.dry_run))
     m = re.search(r"^#\s+(.+)$", md, re.M)
     title = args.title or (m.group(1).strip() if m else Path(args.file).stem)
+    if not args.title and m:
+        # Ed already shows slide.title above the document pane; leaving the
+        # matching H1 in the body would render the title twice.
+        md = md[:m.start()] + md[m.end():]
+    content = markdown_to_ed_xml(md, make_image_uploader(src.parent, token,
+                                                         args.dry_run))
 
     if args.slide:
         slide = request("GET", f"/lessons/slides/{args.slide}", token)["slide"]
