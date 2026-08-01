@@ -81,6 +81,17 @@ recognizable and so future maintainers don't re-discover the map.
   automatically for local `![...](...)` references. Re-pushing
   re-uploads (old file ids are orphaned, which is harmless).
 
+## Runnable snippets in documents
+
+- **A runnable ` ```java ` snippet is compiled as `Main.java`**
+  regardless of what the public class inside it is actually named —
+  click Run on a snippet whose public class isn't literally `Main`
+  and it fails with "class X is public, should be declared in a file
+  named X.java" before the student's code even runs. `md_to_ed.py`
+  auto-marks any snippet containing `void main(` as runnable; name
+  that class `Main` (add a comment if you want to show a more
+  descriptive "real" name) or force it off with ` ```java norun `.
+
 ## Sanity checklist when something looks wrong
 
 1. `python3 ed_push.py doctor`
