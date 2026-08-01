@@ -167,8 +167,14 @@ def cmd_push_challenge(args):
     if slide and not challenge_id:
         raise SystemExit(f"slide {slide['id']} has no challenge_id — is the template a code slide?")
 
-    content = markdown_to_ed_xml((chdir / "writeup.md").read_text(),
-                                 make_image_uploader(chdir, token, dry))
+    writeup = (chdir / "writeup.md").read_text()
+    m = re.search(r"^#\s+(.+)$", writeup, re.M)
+    if m:
+        # Ed always shows the challenge/slide title (man["title"]) above the
+        # description pane; leaving a leading H1 in writeup.md renders a
+        # second title-looking line right under it.
+        writeup = writeup[:m.start()] + writeup[m.end():]
+    content = markdown_to_ed_xml(writeup, make_image_uploader(chdir, token, dry))
     scaffold = workspace_files(chdir, "scaffold")
     solution = workspace_files(chdir, "solution")
     testbase = workspace_files(chdir, "testbase")
