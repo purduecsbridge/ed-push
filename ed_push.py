@@ -56,9 +56,9 @@ def load_manifest(chdir: Path) -> dict:
     return man
 
 
-def guard_lesson(cfg: dict, token: str, lesson_id: int, force: bool,
+def guard_lesson(cfg: dict, token: str, lesson_id: int, dev: bool,
                  expected_course: int | None = None) -> None:
-    """Refuse lessons whose titles look like assessments unless --force.
+    """Refuse lessons whose titles look like assessments unless --dev.
 
     If expected_course is given, also cross-check that the lesson
     actually belongs to that course — catches the dev/--prod mix-up
@@ -73,18 +73,18 @@ def guard_lesson(cfg: dict, token: str, lesson_id: int, force: bool,
     title = lesson.get("title", "")
     blocked = cfg.get("blocked_lesson_patterns") or []
     allowed = cfg.get("allowed_lesson_patterns") or []
-    if any(re.search(p, title, re.I) for p in blocked) and not force:
+    if any(re.search(p, title, re.I) for p in blocked) and not dev:
         raise SystemExit(f'lesson {lesson_id} "{title}" matches a blocked pattern '
-                         f"({blocked}); this tool is for labs/HW — use --force only "
+                         f"({blocked}); this tool is for labs/HW — use --dev only "
                          "if you are certain")
-    if allowed and not any(re.search(p, title, re.I) for p in allowed) and not force:
+    if allowed and not any(re.search(p, title, re.I) for p in allowed) and not dev:
         raise SystemExit(f'lesson {lesson_id} "{title}" matches no allowed pattern '
-                         f"({allowed}); use --force to override")
+                         f"({allowed}); use --dev to override")
     actual_course = lesson.get("course_id") or lesson.get("course")
-    if expected_course and actual_course and actual_course != expected_course and not force:
+    if expected_course and actual_course and actual_course != expected_course and not dev:
         raise SystemExit(f"lesson {lesson_id} belongs to course {actual_course}, "
                          f"not the expected {expected_course} — pass --prod if "
-                         "you meant the production course, or --force if this "
+                         "you meant the production course, or --dev if this "
                          "is intentional")
     print(f'lesson {lesson_id}: "{title}" — ok')
 
@@ -174,7 +174,7 @@ def cmd_push_challenge(args):
     if args.prod and not expected_course:
         raise SystemExit("--prod given but no prod_course configured in config.yaml")
 
-    guard_lesson(cfg, token, man["lesson"], args.force, expected_course)
+    guard_lesson(cfg, token, man["lesson"], args.dev, expected_course)
 
     # --- slide: existing or cloned from the template ---
     if man.get("slide"):
@@ -383,7 +383,7 @@ def cmd_push_doc(args):
     elif not args.lesson:
         raise SystemExit("need --slide (reuse) or --lesson (clone the template into it)")
     else:
-        guard_lesson(cfg, token, args.lesson, args.force, expected_course)
+        guard_lesson(cfg, token, args.lesson, args.dev, expected_course)
         slide = None
 
     print(f'doc: "{title}"  ({len(content)} chars of XML from {args.file})')
@@ -453,7 +453,7 @@ def main():
     p.add_argument("dir")
     p.add_argument("--dry-run", dest="dry_run", action="store_true", default=True)
     p.add_argument("--no-dry-run", dest="dry_run", action="store_false")
-    p.add_argument("--force", action="store_true",
+    p.add_argument("--dev", action="store_true",
                    help="override the lesson-title guardrails")
     p.add_argument("--prod", action="store_true",
                    help="target prod_course (config.yaml) instead of course — "
@@ -474,7 +474,7 @@ def main():
                    help="create the slide hidden (visible is the default)")
     p.add_argument("--dry-run", dest="dry_run", action="store_true", default=True)
     p.add_argument("--no-dry-run", dest="dry_run", action="store_false")
-    p.add_argument("--force", action="store_true",
+    p.add_argument("--dev", action="store_true",
                    help="override the lesson-title guardrails")
     p.add_argument("--prod", action="store_true",
                    help="target prod_course (config.yaml) instead of course — "
