@@ -56,10 +56,21 @@ def load_manifest(chdir: Path) -> dict:
     return man
 
 
-def guard_lesson(cfg: dict, token: str, lesson_id: int, force: bool) -> None:
-    """Refuse lessons whose titles look like assessments unless --force."""
+def guard_lesson(cfg: dict, token: str, lesson_id: int, force: bool,
+                 expected_course: int | None = None) -> None:
+    """Refuse lessons whose titles look like assessments unless --force.
+
+    If expected_course is given, also cross-check that the lesson
+    actually belongs to that course — catches the dev/--prod mix-up
+    (pushing to the real course without --prod, or to the scratch
+    course with it) before anything is touched. Best-effort: the
+    lesson id field Ed uses for this hasn't been confirmed against a
+    live response, so this silently no-ops if the field isn't there
+    rather than blocking a push on a guess.
+    """
     lesson = request("GET", f"/lessons/{lesson_id}", token)
-    title = lesson.get("lesson", lesson).get("title", "")
+    lesson = lesson.get("lesson", lesson)
+    title = lesson.get("title", "")
     blocked = cfg.get("blocked_lesson_patterns") or []
     allowed = cfg.get("allowed_lesson_patterns") or []
     if any(re.search(p, title, re.I) for p in blocked) and not force:
@@ -69,6 +80,12 @@ def guard_lesson(cfg: dict, token: str, lesson_id: int, force: bool) -> None:
     if allowed and not any(re.search(p, title, re.I) for p in allowed) and not force:
         raise SystemExit(f'lesson {lesson_id} "{title}" matches no allowed pattern '
                          f"({allowed}); use --force to override")
+    actual_course = lesson.get("course_id") or lesson.get("course")
+    if expected_course and actual_course and actual_course != expected_course and not force:
+        raise SystemExit(f"lesson {lesson_id} belongs to course {actual_course}, "
+                         f"not the expected {expected_course} — pass --prod if "
+                         "you meant the production course, or --force if this "
+                         "is intentional")
     print(f'lesson {lesson_id}: "{title}" — ok')
 
 
@@ -85,10 +102,13 @@ def cmd_doctor(args):
     user = request("GET", "/user", token)
     name = user.get("user", user).get("name", "?")
     print(f"token ok: acting as {name}")
-    course = cfg.get("course")
+    key = "prod_course" if args.prod else "course"
+    course = cfg.get(key)
+    if not course:
+        raise SystemExit(f"no {key} configured in config.yaml")
     lessons = request("GET", f"/courses/{course}/lessons", token)
     n = len(lessons.get("lessons", []))
-    print(f"course {course}: reachable ({n} lessons)")
+    print(f"{key} {course}: reachable ({n} lessons)")
     try:
         import websocket  # noqa: F401
         print("websocket-client: installed")
@@ -150,8 +170,11 @@ def cmd_push_challenge(args):
     chdir = Path(args.dir).resolve()
     man = load_manifest(chdir)
     dry = args.dry_run
+    expected_course = cfg.get("prod_course") if args.prod else cfg.get("course")
+    if args.prod and not expected_course:
+        raise SystemExit("--prod given but no prod_course configured in config.yaml")
 
-    guard_lesson(cfg, token, man["lesson"], args.force)
+    guard_lesson(cfg, token, man["lesson"], args.force, expected_course)
 
     # --- slide: existing or cloned from the template ---
     if man.get("slide"):
@@ -340,6 +363,9 @@ def cmd_push_doc(args):
     and use --slide for every later re-push."""
     token = need_token()
     cfg = load_config()
+    expected_course = cfg.get("prod_course") if args.prod else cfg.get("course")
+    if args.prod and not expected_course:
+        raise SystemExit("--prod given but no prod_course configured in config.yaml")
     src = Path(args.file)
     md = src.read_text()
     m = re.search(r"^#\s+(.+)$", md, re.M)
@@ -357,7 +383,7 @@ def cmd_push_doc(args):
     elif not args.lesson:
         raise SystemExit("need --slide (reuse) or --lesson (clone the template into it)")
     else:
-        guard_lesson(cfg, token, args.lesson, args.force)
+        guard_lesson(cfg, token, args.lesson, args.force, expected_course)
         slide = None
 
     print(f'doc: "{title}"  ({len(content)} chars of XML from {args.file})')
@@ -415,6 +441,8 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("doctor", help="check token, course access, dependencies")
+    p.add_argument("--prod", action="store_true",
+                   help="check prod_course instead of course")
     p.set_defaults(fn=cmd_doctor)
 
     p = sub.add_parser("convert", help="print a writeup.md as Ed XML (preview)")
@@ -427,6 +455,10 @@ def main():
     p.add_argument("--no-dry-run", dest="dry_run", action="store_false")
     p.add_argument("--force", action="store_true",
                    help="override the lesson-title guardrails")
+    p.add_argument("--prod", action="store_true",
+                   help="target prod_course (config.yaml) instead of course — "
+                        "without this flag, pushes are checked against the "
+                        "regular (dev) course id")
     p.set_defaults(fn=cmd_push_challenge)
 
     p = sub.add_parser("push-doc",
@@ -444,6 +476,10 @@ def main():
     p.add_argument("--no-dry-run", dest="dry_run", action="store_false")
     p.add_argument("--force", action="store_true",
                    help="override the lesson-title guardrails")
+    p.add_argument("--prod", action="store_true",
+                   help="target prod_course (config.yaml) instead of course — "
+                        "without this flag, pushes are checked against the "
+                        "regular (dev) course id")
     p.set_defaults(fn=cmd_push_doc)
 
     p = sub.add_parser("verify-challenge",
