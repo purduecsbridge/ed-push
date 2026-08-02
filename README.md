@@ -19,6 +19,22 @@ with images, and Markdown → Ed-XML conversion for all of it.
 > post-push verification exists precisely so silent changes get
 > caught.
 
+## Quick reference
+
+```bash
+# dev (default course)
+python3 ed_push.py push-challenge my-lab/ed --no-dry-run
+python3 ed_push.py push-doc my-lab/ed/handout.md --slide N --no-dry-run
+
+# prod (real Bridge course)
+python3 ed_push.py push-challenge my-lab/ed --prod --no-dry-run
+python3 ed_push.py push-doc my-lab/ed/handout.md --slide N --prod --no-dry-run
+```
+
+Drop `--no-dry-run` on any of these to preview first (the default
+everywhere). See [dev vs. prod](#dev-vs-prod) below for what `--prod`
+actually checks.
+
 ## Quickstart
 
 1. **Token.** Create an API token on Ed (Settings → API tokens) and
