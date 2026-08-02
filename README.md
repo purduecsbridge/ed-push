@@ -70,14 +70,35 @@ instead of cloning a new one.
 
 | Command | What it does |
 |---|---|
-| `doctor` | Token, course reachability, dependency check |
+| `doctor [--prod]` | Token, course reachability, dependency check |
 | `convert FILE.md` | Print a Markdown file as Ed XML (offline preview) |
-| `push-challenge DIR [--no-dry-run] [--force]` | Push manifest + writeup + all filespaces; auto-verify |
+| `push-challenge DIR [--no-dry-run] [--force] [--prod]` | Push manifest + writeup + all filespaces; auto-verify |
 | `verify-challenge DIR` | Re-run the field verification any time (exit 0/1; handy in CI) |
-| `push-doc FILE.md --lesson N \| --slide N [--title T] [--hidden] [--no-dry-run] [--force]` | Push Markdown as a **document slide** (handouts). First push clones the doc template into `--lesson` and prints the new slide id; re-push with `--slide N`. Local images referenced as `![alt](path.png)` are uploaded automatically. |
+| `push-doc FILE.md --lesson N \| --slide N [--title T] [--hidden] [--no-dry-run] [--force] [--prod]` | Push Markdown as a **document slide** (handouts). First push clones the doc template into `--lesson` and prints the new slide id; re-push with `--slide N`. Local images referenced as `![alt](path.png)` are uploaded automatically. |
 
 Dry-run is the default everywhere; `--no-dry-run` is always the flag
 that makes it real.
+
+## dev vs. prod
+
+By default every command targets whatever course `course:` in
+`config.yaml` points at (typically a scratch/dev course). Pass
+`--prod` to target `prod_course` instead:
+
+- `doctor --prod` checks `prod_course`'s reachability instead of
+  `course`'s.
+- `push-challenge`/`push-doc --prod` verify the target lesson (from
+  `challenge.yaml`'s `lesson:`, or `--lesson`) actually belongs to
+  `prod_course` before pushing anything, and refuse it otherwise
+  (override with `--force` if that's genuinely intended). Without
+  `--prod`, the same check runs against `course`.
+
+Note `lesson`/`slide` ids are globally unique on Ed and are what
+actually route a push — `--prod` doesn't change *where* content goes
+on its own, it's a guardrail that catches pushing dev content to a
+prod lesson id (or vice versa) before it happens. Point
+`challenge.yaml`'s `lesson:` (and `slide:`, once first pushed) at the
+real course's ids to actually push there.
 
 ## Lab handouts (document slides)
 

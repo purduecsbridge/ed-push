@@ -2,9 +2,17 @@
 # config.yaml is gitignored — it holds YOUR course's ids.
 
 # The Ed course id (from the course URL: edstem.org/us/courses/<id>/...).
-# Only used by `doctor` for a reachability check — pushes address
-# lessons/slides directly (their ids are globally unique).
+# Used by `doctor` for a reachability check, and as the expected course
+# for push-challenge/push-doc's lesson guardrail. This is your regular
+# (e.g. dev/scratch) course — commands use it unless --prod is passed.
 course: 123456
+
+# The production course id. Only consulted when a command is run with
+# --prod (doctor --prod, push-challenge/push-doc --prod): doctor checks
+# this course instead of `course`, and pushes verify the target lesson
+# actually belongs to it before touching anything. Leave unset if you
+# don't push to a separate production course.
+prod_course: 987654
 
 # A blank CODE slide to clone when a challenge.yaml has no slide id.
 # Create one in a scratch lesson via the Ed UI (Add slide -> Code),
