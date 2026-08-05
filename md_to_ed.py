@@ -105,6 +105,54 @@ def _table_row(line: str, header: bool = False) -> str:
     return "<table-row>" + inner + "</table-row>"
 
 
+_LIST_ITEM_RE = re.compile(r"([-*]|\d+\.)\s+(.*)")
+
+
+def _parse_list(lines: list[str], i: int, indent: int) -> tuple[str, int]:
+    """Parse a (possibly nested) list whose items are indented exactly
+    `indent` spaces, starting at lines[i]. A list item indented MORE
+    than `indent` starts a nested <list> inside the previous item
+    (Ed's real schema, confirmed against hand-authored slides:
+    <list-item><paragraph>...</paragraph><list>...</list></list-item>);
+    a more-indented line with no marker is continuation text for the
+    previous item's paragraph instead. Returns (xml, next_i)."""
+    first = _LIST_ITEM_RE.match(lines[i].strip())
+    style = "bullet" if first.group(1) in ("-", "*") else "number"
+    items: list[str] = []
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+        if not stripped:
+            nxt = lines[i + 1] if i + 1 < len(lines) else ""
+            nxt_indent = len(nxt) - len(nxt.lstrip(" "))
+            if _LIST_ITEM_RE.match(nxt.strip()) and nxt_indent >= indent:
+                i += 1
+                continue
+            break
+        cur_indent = len(line) - len(line.lstrip(" "))
+        lm = _LIST_ITEM_RE.match(stripped)
+        if not (lm and cur_indent == indent):
+            break
+        text = lm.group(2)
+        i += 1
+        nested_xml = ""
+        continuation: list[str] = []
+        while i < len(lines) and lines[i].strip():
+            nxt = lines[i]
+            nxt_indent = len(nxt) - len(nxt.lstrip(" "))
+            if nxt_indent <= indent:
+                break
+            if _LIST_ITEM_RE.match(nxt.strip()):
+                nested_xml, i = _parse_list(lines, i, nxt_indent)
+                break
+            continuation.append(nxt.strip())
+            i += 1
+        full_text = " ".join([text] + continuation)
+        items.append("<list-item><paragraph>" + _inline(full_text) + "</paragraph>"
+                      + nested_xml + "</list-item>")
+    return f'<list style="{style}">' + "".join(items) + "</list>", i
+
+
 def markdown_to_ed_xml(md: str, image_uploader=None) -> str:
     """Convert markdown to Ed document XML.
 
@@ -194,31 +242,13 @@ def markdown_to_ed_xml(md: str, image_uploader=None) -> str:
             xml.append("<table>" + "".join(rows) + "</table>")
             continue
 
-        # list (bullet or numbered), with two-space continuation lines
-        m = re.match(r"([-*]|\d+\.)\s+(.*)", stripped)
+        # list (bullet or numbered), with nested sub-lists and
+        # two-space continuation lines
+        m = _LIST_ITEM_RE.match(stripped)
         if m:
             _flush_paragraph(para, xml)
-            style = "bullet" if m.group(1) in ("-", "*") else "number"
-            items = []
-            while i < len(lines):
-                lm = re.match(r"([-*]|\d+\.)\s+(.*)", lines[i].strip())
-                if lm:
-                    items.append([lm.group(2)])
-                    i += 1
-                elif lines[i].startswith("  ") and lines[i].strip() and items:
-                    items[-1].append(lines[i].strip())
-                    i += 1
-                elif not lines[i].strip():
-                    # blank line ends the list unless the next line continues it
-                    if i + 1 < len(lines) and re.match(r"([-*]|\d+\.)\s+", lines[i + 1].strip()):
-                        i += 1
-                    else:
-                        break
-                else:
-                    break
-            inner = "".join("<list-item><paragraph>" + _inline(" ".join(it)) + "</paragraph></list-item>"
-                            for it in items)
-            xml.append(f'<list style="{style}">' + inner + "</list>")
+            list_xml, i = _parse_list(lines, i, len(line) - len(line.lstrip(" ")))
+            xml.append(list_xml)
             continue
 
         # blank line = paragraph break
