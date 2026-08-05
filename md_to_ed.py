@@ -86,8 +86,20 @@ def _flush_paragraph(lines: list[str], xml: list[str]) -> None:
     lines.clear()
 
 
+def _split_table_cells(line: str) -> list[str]:
+    """Split a `| a | b |` row on unescaped pipes only, so a literal `|`
+    inside a cell (written `\\|`, e.g. the `||` OR operator) stays part
+    of that cell instead of being mistaken for a column boundary."""
+    parts = re.split(r"(?<!\\)\|", line.strip())
+    if parts and parts[0] == "":
+        parts = parts[1:]
+    if parts and parts[-1] == "":
+        parts = parts[:-1]
+    return [c.strip().replace("\\|", "|") for c in parts]
+
+
 def _table_row(line: str, header: bool = False) -> str:
-    cells = [c.strip() for c in line.strip().strip("|").split("|")]
+    cells = _split_table_cells(line)
     inner = "".join("<table-cell><paragraph>" + _inline(c) + "</paragraph></table-cell>"
                     for c in cells)
     return "<table-row>" + inner + "</table-row>"
